@@ -1,22 +1,48 @@
 #include <stdio.h>
-#include <parser.h>
+#include <stdlib.h>
+#include "../include/parser.h"
+#include <string.h>
 
-int **matrix_alloc(int rows, int cols, int **matrix);
+int row_parse(char *buffer, int ncols, int matrix[][ncols], int row) {
+	char *delim = " ";
+	char *tok_buf;
+	int col_count = 0;
 
-int **matrix_parse(char *filename, int **matrix);
+	tok_buf = strtok(buffer, delim);
+	while (tok_buf != NULL) {
+		matrix[row][col_count++] = atoi(tok_buf);
+		tok_buf = strtok(NULL, delim);
+	}
+	return 0;
+}
+int size_parse(char *filename, int *cols, int *rows) {
+	FILE *file;
 
-int **matrix_parse(char *filename, int **matrix) {
-	int rows, cols, i;
+	if((file = fopen(filename, "r")) == NULL)
+		return -1;
+	if(fscanf(file, "LINHAS = %d\n", rows))
+		printf("r %d\n", *rows);		
+	if(fscanf(file, "COLUNAS = %d\n", cols))
+		printf("c %d\n", *cols);
+	fclose(file);
+	
+	return 0;
+}
+int matrix_parse(char *filename, int cols, int matrix[][cols]) {
+	int row_count = 0;
 	FILE *file;
 	char *buffer;
-	file = fopen(filename, r);
-		
 
+	if((file = fopen(filename, "r")) == NULL)
+		return -1;
 
-}
-int main(int argc, char *argv[]) {
-
-	printf("Hello %s \n", *argv);
+	buffer = (char *) malloc(sizeof(char) * 2*cols);
+	
+	while(!feof(file)) {
+		fgets(buffer, 2*cols-1, file);
+		/* buffer processing */
+		row_parse(buffer, cols, matrix, row_count++);
+	}
 
 	return 0;
 }
