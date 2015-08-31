@@ -15,26 +15,24 @@ int row_parse(char *buffer, int ncols, int matrix[][ncols], int row) {
 	}
 	return 0;
 }
-int size_parse(char *filename, int *cols, int *rows) {
-	FILE *file;
 
-	if((file = fopen(filename, "r")) == NULL)
-		return -1;
+int parser_matrix_size(FILE *file, int *cols, int *rows) {
 	if(fscanf(file, "LINHAS = %d\n", rows))
 		printf("r %d\n", *rows);		
+	else 
+		return -1;
+
 	if(fscanf(file, "COLUNAS = %d\n", cols))
 		printf("c %d\n", *cols);
-	fclose(file);
+	else
+		return -1;
 	
 	return 0;
 }
-int matrix_parse(char *filename, int cols, int matrix[][cols]) {
-	int row_count = 0;
-	FILE *file;
-	char *buffer;
 
-	if((file = fopen(filename, "r")) == NULL)
-		return -1;
+int parser_matrix(FILE *file, int cols, int matrix[][cols]) {
+	int row_count = 0;
+	char *buffer;
 
 	buffer = (char *) malloc(sizeof(char) * 2*cols);
 	
