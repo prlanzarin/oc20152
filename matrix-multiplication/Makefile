@@ -10,11 +10,14 @@ SRC_DIR=./src
 
 all: 
 
-matrix_fork: $(SRC_DIR)/matrix_fork.c parser.o
-	$(CC) -o $(SRC_DIR)/matrix_fork $(SRC_DIR)/matrix_fork.c $(BIN_DIR)/parser.o -Wall
+matrix_fork: $(SRC_DIR)/matrix_fork.c parser.o matrix.o
+	$(CC) -o $(SRC_DIR)/matrix_fork $(SRC_DIR)/matrix_fork.c $(BIN_DIR)/*.o -Wall
 	
 parser.o: $(INC_DIR)/parser.h $(SRC_DIR)/parser.c
 	mkdir -p $(BIN_DIR) && $(CC) $(DEBUG) -c -o $(BIN_DIR)/parser.o $(SRC_DIR)/parser.c -Wall
+
+matrix.o: $(INC_DIR)/matrix.h $(SRC_DIR)/matrix.c
+	mkdir -p $(BIN_DIR) && $(CC) $(DEBUG) -c -o $(BIN_DIR)/matrix.o $(SRC_DIR)/matrix.c -Wall
 
 clean:
 	rm -rf $(BIN_DIR)/*.o $(SRC_DIR)/*~ $(INC_DIR)/*~ *~

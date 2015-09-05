@@ -1,8 +1,14 @@
+/*
+ * int **matrix: matrix pointer
+ * int r: rows (linhas)
+ * int c: columns (colunas)
+ */
+
 typedef struct p_matrix {
         int **matrix;
-        int rows, cols;
+        int r, c;
 } MATRIX;
 
-matrix_new(int **matrix, int rows, int cols);
-matrix_free(int **matrix, int rows, int cols);
-matrix_multiply(int **m1, int **m2);
+MATRIX *matrix_new(int rows, int cols);
+void matrix_free(MATRIX *matrix);
+int matrix_multiply(MATRIX *m1, MATRIX *m2);
