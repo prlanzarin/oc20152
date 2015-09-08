@@ -17,29 +17,42 @@ int row_parse(char *buffer, MATRIX *matrix, int row) {
 	}
 	return 0;
 }
-int parser_rows(FILE *file) {
+int parser_rows(char *filename) {
 	int rows;
+	FILE *file;
+	if((file = fopen(filename,"r")) == NULL)
+		return -1;
+
 	if(fscanf(file, "LINHAS = %d\n", &rows))
 		return rows;
 	else
 		return -1;
 }
 
-int parser_cols(FILE *file) {
+int parser_cols(char *filename) {
 	int cols;
-	if(fscanf(file, "COLUNAS = %d\n", &cols)) {
-		printf("COLS P : %d \n", cols);
-		return cols;
-	}
-	else {	
-		printf("COLS P WRONG: %d \n", cols);
+	FILE *file;
+	char buffer[256];
+	if((file = fopen(filename,"r")) == NULL)
 		return -1;
-	}
+
+	fgets(buffer, sizeof(buffer), file);
+	
+	if(fscanf(file, "COLUNAS = %d\n", &cols))
+		return cols;
+	else	
+		return -1;
 }
 
-int parser_matrix(FILE *file, MATRIX *matrix) {
+int parser_matrix(char *filename, MATRIX *matrix) {
 	int row_count = 0;
-	char *buffer;
+	char *buffer, line[256];
+	FILE *file;
+	if((file = fopen(filename,"r")) == NULL)
+		return -1;
+
+	fgets(line, sizeof(line), file);
+	fgets(line, sizeof(line), file);
 
 	buffer = (char *) malloc(sizeof(char) * (2 * matrix->c));
 	
