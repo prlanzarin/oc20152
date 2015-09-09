@@ -1,0 +1,11 @@
+#include "dining_sem.h"
+#include "stdio.h"
+#include "stdlib.h"
+
+int main(int argc, char *argv[])
+{
+	if (argc < 2) 
+	{
+	   fprintf (stderr, "call -number_of_philosophers\n");
+	}
+}
