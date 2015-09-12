@@ -1,9 +1,0 @@
-#ifndef DINING_SEM
-#define DINING_SEM
-
-typedef struct {
-	char state;
-} philosopher;
-
-#endif
-

@@ -3,9 +3,19 @@
 
 typedef struct {
 	char state;
-} philosopher;
+} philosopher_t;
 
-void initializeSemaphores(sem_t *forks, int numberForks);
+typedef struct {
+	int id;
+} params_t;
+
+void initializeSemaphores();
+void startThreads ();
+void *dinnerTime (void *params);
+void thinking (int nThread);
+void eating (int nThread);
+void hungry (int nThread);
+void printStates();
 
 #endif
 
