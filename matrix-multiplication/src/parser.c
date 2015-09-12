@@ -48,20 +48,22 @@ int parser_matrix(char *filename, MATRIX *matrix) {
 	int row_count = 0;
 	char *buffer, line[256];
 	FILE *file;
+	size_t line_size = sizeof(int) * (2 * matrix->c) + 1;
+
 	if((file = fopen(filename,"r")) == NULL)
 		return -1;
 
 	fgets(line, sizeof(line), file);
 	fgets(line, sizeof(line), file);
 
-	buffer = (char *) malloc(sizeof(char) * (2 * matrix->c));
+	buffer = (char *) malloc(line_size);
 	
-	while(!feof(file)) {
-		fgets(buffer, 2 * (matrix->c) - 1, file);
+	while((fgets(buffer, line_size, file)) != NULL) {
 		/* buffer processing */
 		row_parse(buffer, matrix, row_count);
 		row_count++;
 	}
 
+	fclose(file);
 	return 0;
 }
