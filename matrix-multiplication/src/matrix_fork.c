@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h> /* fork */
 #include <sys/types.h> /* for pid_t */
 #include <sys/wait.h> /* for wait */
@@ -14,6 +15,7 @@
 
 /* shared memory globals */
 int segment_id;
+int **shm_mat;
 char *shm_addr;
 size_t SHM_SIZE; // shared memory block size
 
@@ -27,9 +29,9 @@ void child_process(void);
 void parent_process(void);
 
 int main(int argc, char *argv[]) {
-	int proc_counter, row_counter;
+	int proc_counter, row_counter, status, i;
 	pid_t pid;
-	MATRIX *MAT_OUT;
+	MATRIX *MAT_OUT; 
 
 	/* Allocating new matrixes to be multiplied. Functions are defined
 	 * in matrix.h. UTILS_parse_rows/cols are responsible for gathering
@@ -40,6 +42,8 @@ int main(int argc, char *argv[]) {
 	MAT_TWO = MATRIX_new(parser_rows(FILEIN_2), parser_cols(FILEIN_2));
 	parser_matrix(FILEIN_2, MAT_TWO);
 	
+	MAT_OUT = MATRIX_new(MAT_ONE->r, MAT_TWO->c);
+
 	if(!(MATRIX_is_multipliable(MAT_ONE, MAT_TWO))) {
 		fprintf(stderr, "ERROR: invalid matrixes sizes.\n");
 		exit(EXIT_FAILURE);
@@ -53,13 +57,9 @@ int main(int argc, char *argv[]) {
 	pids = (pid_t *)malloc(sizeof(pid_t) * NOF_PROC);	
 
 	/* shared-memory segment creation and attachment. Read/Write */
-	SHM_SIZE = (MAT_ONE->r * sizeof(int *) + 
-			MAT_ONE->r * MAT_TWO->c * sizeof(int) +
-			sizeof(MATRIX)); // sizeof MAT_OUT
+	SHM_SIZE = (MAT_ONE->r * MAT_TWO->c * sizeof(int)); // sizeof MAT_OUT
 	segment_id = shmget(IPC_PRIVATE, SHM_SIZE, S_IRUSR | S_IWUSR);
-	shm_addr = shmat(segment_id, NULL, 0);
-	MAT_OUT = (MATRIX *) shm_addr;
-	MAT_OUT->r = MAT_ONE->r; MAT_OUT->c = MAT_TWO->c;
+	shm_mat = (int **)shmat(segment_id, (void *) 0, 0);
 	
 	/* spawns NOF_PROC - 1 processes (because we already have a main
 	 * process running */
@@ -72,8 +72,7 @@ int main(int argc, char *argv[]) {
 		}
 
 		if(pid == 0) {
-			shm_addr = shmat(segment_id, NULL, 0);
-			MAT_OUT = (MATRIX *) shm_addr;
+			shm_mat = (int **)shmat(segment_id, NULL, 0);
 			break;	//it's a child process, we record its id
 				// and prevent it from spawning more processes
 		}
@@ -83,12 +82,26 @@ int main(int argc, char *argv[]) {
 
 	for(row_counter = proc_counter; row_counter < MAT_OUT->c; row_counter += NOF_PROC) {
 		MATRIX_line_multiply(MAT_OUT, MAT_ONE, MAT_TWO, row_counter);
-		printf("MULTIPLIED LINE %d\n in PROCESS %d\n", row_counter, proc_counter);
-	}	
-	
-	shmdt(MAT_OUT);
+		/* Copying multiplied lines to shared memory 2d array */
+		memcpy(&shm_mat[row_counter * MAT_OUT->c],
+			       	&MAT_OUT->matrix[row_counter * MAT_OUT->c], 
+				(sizeof(int) * MAT_OUT->c));
+	}
 
+	if(proc_counter != NOF_PROC - 1) {
+		shmdt(shm_mat);
+		shmctl(segment_id, IPC_RMID, NULL);
+		return 0;
+	}
+	else {
+		for(i = 0; i < NOF_PROC - 1; i++)
+			waitpid(pids[i], &status, 0);
+	}
+
+	shmdt(MAT_OUT);
+	shmctl(segment_id, IPC_RMID, NULL);
 	MATRIX_free(MAT_ONE);
 	MATRIX_free(MAT_TWO);
+	MATRIX_free(MAT_OUT);
 	return 0;
 }
