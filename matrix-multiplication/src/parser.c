@@ -67,3 +67,24 @@ int parser_matrix(char *filename, MATRIX *matrix) {
 	fclose(file);
 	return 0;
 }
+
+int UTILS_get_args(int argc, char **argv) {
+	int arg;
+	if(argc == 2) {
+		if(!sscanf(argv[1], "%d", &arg)) {
+			fprintf(stderr, 
+				"ERROR: argument could not be parsed.\n");
+			exit(EXIT_FAILURE);
+		}
+		if(arg < 0) {
+			fprintf(stderr, "ERROR: invalid number of processes.\n");
+			exit(EXIT_FAILURE);
+		}
+	}
+	else {
+		fprintf(stderr,
+			"ERROR: invalid number of arguments. EXPECTS n : integer.\n");
+		exit(EXIT_FAILURE);
+	}
+	return arg;
+}

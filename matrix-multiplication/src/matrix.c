@@ -8,6 +8,9 @@
 MATRIX *MATRIX_new(int rows, int cols) { 
 	int i;
 	MATRIX *new_mat = (MATRIX *)malloc(sizeof(MATRIX));
+	printf("MAT SIZE ALLOCATED %d\n", (sizeof(MATRIX) +
+			sizeof(int *) * rows +
+			sizeof(int) * cols * rows));
 	new_mat->r = rows;
 	new_mat->c = cols;
 	if((new_mat->matrix = malloc(rows * sizeof(int *))) == NULL)

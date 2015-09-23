@@ -6,43 +6,34 @@
 #include <sys/shm.h> /* shared memory lib */
 #include <sys/stat.h> 
 #include "../include/matrix.h" /* matrix basic operations */
-#include "../include/parser.h" /* matrix parser utilities */
+#include "../include/parser.h" /* utilities */
 
 #define FILEIN_1 "in1.txt"
 #define FILEIN_2 "in2.txt"
 #define FILEOUT "out.txt"
-#define NOF_ARGS 2
 
 /* shared memory globals */
 int segment_id;
-int *shared_memory;
-const size_t SHM_SIZE = 4096; // shared memory block size
+char *shm_addr;
+size_t SHM_SIZE; // shared memory block size
 
-MATRIX *MAT_ONE, *MAT_TWO, *MAT_OUT; // global matrixes to operate upon
+MATRIX *MAT_ONE, *MAT_TWO; // global matrixes to operate upon
 int NOF_PROC; // number of processes passed as argument via terminal
 int ROWS_PER_FORK; // number of rows to be multiplied by each process
+pid_t *pids; // spawned processes identifiers
 
 void child_process(void);
 
 void parent_process(void);
 
 int main(int argc, char *argv[]) {
-	int i;
+	int proc_counter, row_counter;
 	pid_t pid;
+	MATRIX *MAT_OUT;
 
-	if(argc == NOF_ARGS) {
-		sscanf(argv[1], "%d", &NOF_PROC);
-		if(NOF_PROC < 0) {
-			fprintf(stderr, "ERROR: invalid number of processes.\n");
-			exit(EXIT_FAILURE);
-		}
-	}
-	else {
-		fprintf(stderr,
-			"ERROR: invalid number of arguments. EXPECTS n : integer.\n");
-		exit(EXIT_FAILURE);
-	}
-
+	/* Allocating new matrixes to be multiplied. Functions are defined
+	 * in matrix.h. UTILS_parse_rows/cols are responsible for gathering
+	 * matrixes sizes, defined in utils.c */ 
 	MAT_ONE = MATRIX_new(parser_rows(FILEIN_1), parser_cols(FILEIN_1));
 	parser_matrix(FILEIN_1, MAT_ONE);
 
@@ -54,12 +45,25 @@ int main(int argc, char *argv[]) {
 		exit(EXIT_FAILURE);
 	}
 
-	MAT_OUT = MATRIX_new(MAT_ONE->r, MAT_TWO->c);
+	/* getting number of process passed as argument. Gets the lowest
+	 * value between the argument and MAT_ONE number of rows as the
+	 * number of process to be spawned */	
+	NOF_PROC = UTILS_get_args(argc, argv);
+	NOF_PROC = MIN(NOF_PROC, MAT_ONE->r);
+	pids = (pid_t *)malloc(sizeof(pid_t) * NOF_PROC);	
 
-	/* shared-memory segment creation. Read/Write */
+	/* shared-memory segment creation and attachment. Read/Write */
+	SHM_SIZE = (MAT_ONE->r * sizeof(int *) + 
+			MAT_ONE->r * MAT_TWO->c * sizeof(int) +
+			sizeof(MATRIX)); // sizeof MAT_OUT
 	segment_id = shmget(IPC_PRIVATE, SHM_SIZE, S_IRUSR | S_IWUSR);
-
-	for(i = 0; i < NOF_PROC; i++) {
+	shm_addr = shmat(segment_id, NULL, 0);
+	MAT_OUT = (MATRIX *) shm_addr;
+	MAT_OUT->r = MAT_ONE->r; MAT_OUT->c = MAT_TWO->c;
+	
+	/* spawns NOF_PROC - 1 processes (because we already have a main
+	 * process running */
+	for(proc_counter = 0; proc_counter < NOF_PROC - 1; proc_counter++) {
 		pid = fork();
 
 		if(pid < 0) {
@@ -67,23 +71,24 @@ int main(int argc, char *argv[]) {
 			exit(EXIT_FAILURE);
 		}
 
-		if(pid == 0)
-			child_process(); //it's a child process
-		else 
-			parent_process(); //it's a parent process
-	}
+		if(pid == 0) {
+			shm_addr = shmat(segment_id, NULL, 0);
+			MAT_OUT = (MATRIX *) shm_addr;
+			break;	//it's a child process, we record its id
+				// and prevent it from spawning more processes
+		}
 	
+		pids[proc_counter] = pid;
+	}
+
+	for(row_counter = proc_counter; row_counter < MAT_OUT->c; row_counter += NOF_PROC) {
+		MATRIX_line_multiply(MAT_OUT, MAT_ONE, MAT_TWO, row_counter);
+		printf("MULTIPLIED LINE %d\n in PROCESS %d\n", row_counter, proc_counter);
+	}	
+	
+	shmdt(MAT_OUT);
+
 	MATRIX_free(MAT_ONE);
 	MATRIX_free(MAT_TWO);
 	return 0;
-}
-
-void child_process(void) {
-	printf("CHILD!\n");
-	shared_memory = (int *) shmat(segment_id, NULL, 0);
-}
-
-void parent_process(void) {
-	printf("FATHER!\n");
-	shared_memory = (int *) shmat(segment_id, NULL, 0);
 }
