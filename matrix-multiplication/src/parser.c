@@ -23,10 +23,14 @@ int parser_rows(char *filename) {
 	if((file = fopen(filename,"r")) == NULL)
 		return -1;
 
-	if(fscanf(file, "LINHAS = %d\n", &rows))
+	if(fscanf(file, "LINHAS = %d\n", &rows)) {
+		fclose(file);
 		return rows;
-	else
+	}
+	else {
+		fclose(file);
 		return -1;
+	}
 }
 
 int parser_cols(char *filename) {
@@ -38,10 +42,14 @@ int parser_cols(char *filename) {
 
 	fgets(buffer, sizeof(buffer), file);
 	
-	if(fscanf(file, "COLUNAS = %d\n", &cols))
+	if(fscanf(file, "COLUNAS = %d\n", &cols)) {
+		fclose(file);
 		return cols;
-	else	
+	}
+	else {
+		fclose(file);
 		return -1;
+	}
 }
 
 int parser_matrix(char *filename, MATRIX *matrix) {
@@ -76,7 +84,7 @@ int UTILS_get_args(int argc, char **argv) {
 				"ERROR: argument could not be parsed.\n");
 			exit(EXIT_FAILURE);
 		}
-		if(arg < 0) {
+		if(arg <= 0) {
 			fprintf(stderr, "ERROR: invalid number of processes.\n");
 			exit(EXIT_FAILURE);
 		}
@@ -88,3 +96,23 @@ int UTILS_get_args(int argc, char **argv) {
 	}
 	return arg;
 }
+
+int UTILS_write_matrix(char *filename, MATRIX *mat) {
+	int i, j;
+	FILE *file;
+
+	if((file = fopen(filename, "w+")) == NULL)
+		return -1;
+
+	fprintf(file, "LINHAS = %d\nCOLUNAS = %d\n", mat->r, mat->c);
+	for(i = 0; i < mat->r; i++) {
+		for(j = 0; j < mat->c; j++) {
+			fprintf(file, "%d", mat->matrix[i][j]);
+			if(j < mat->c - 1) // last column checking, no spaces
+				fprintf(file, " ");
+		}
+		if(i < mat->r - 1) // last row checking, no line end
+			fprintf(file, "\n");
+	}
+	return 0;
+	}

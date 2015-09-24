@@ -13,25 +13,20 @@
 #define FILEIN_2 "in2.txt"
 #define FILEOUT "out.txt"
 
-/* shared memory globals */
-int segment_id;
-int **shm_mat;
-char *shm_addr;
-size_t SHM_SIZE; // shared memory block size
+int segment_id; // allocated shm segment id
+int **shm_mat; // pointer to 2D array representing a MATRIX->matrix
+char *shm_addr; // pointer to start of shm block
+size_t SHM_SIZE; // shm block size
 
-MATRIX *MAT_ONE, *MAT_TWO; // global matrixes to operate upon
+MATRIX *MAT_ONE, *MAT_TWO, *MAT_OUT; // global matrixes to operate upon
 int NOF_PROC; // number of processes passed as argument via terminal
-int ROWS_PER_FORK; // number of rows to be multiplied by each process
 pid_t *pids; // spawned processes identifiers
 
-void child_process(void);
-
-void parent_process(void);
+void terminate(void);
 
 int main(int argc, char *argv[]) {
 	int proc_counter, row_counter, status, i;
 	pid_t pid;
-	MATRIX *MAT_OUT; 
 
 	/* Allocating new matrixes to be multiplied. Functions are defined
 	 * in matrix.h. UTILS_parse_rows/cols are responsible for gathering
@@ -65,43 +60,48 @@ int main(int argc, char *argv[]) {
 	 * process running */
 	for(proc_counter = 0; proc_counter < NOF_PROC - 1; proc_counter++) {
 		pid = fork();
-
 		if(pid < 0) {
 			fprintf(stderr, "ERROR: unable to fork process.\n");
 			exit(EXIT_FAILURE);
 		}
-
 		if(pid == 0) {
 			shm_mat = (int **)shmat(segment_id, NULL, 0);
 			break;	//it's a child process, we record its id
 				// and prevent it from spawning more processes
 		}
-	
 		pids[proc_counter] = pid;
 	}
 
-	for(row_counter = proc_counter; row_counter < MAT_OUT->c; row_counter += NOF_PROC) {
+	for(row_counter = proc_counter; row_counter < MAT_OUT->r; row_counter += NOF_PROC) {
 		MATRIX_line_multiply(MAT_OUT, MAT_ONE, MAT_TWO, row_counter);
 		/* Copying multiplied lines to shared memory 2d array */
 		memcpy(&shm_mat[row_counter * MAT_OUT->c],
-			       	&MAT_OUT->matrix[row_counter * MAT_OUT->c], 
+			       	&MAT_OUT->matrix[row_counter][0],
 				(sizeof(int) * MAT_OUT->c));
 	}
 
 	if(proc_counter != NOF_PROC - 1) {
-		shmdt(shm_mat);
-		shmctl(segment_id, IPC_RMID, NULL);
-		return 0;
+		terminate(); // it's a child process; after multiplication
+		return 0;	// we should terminate it
 	}
-	else {
-		for(i = 0; i < NOF_PROC - 1; i++)
-			waitpid(pids[i], &status, 0);
-	}
+	else
+		for(i = 0; i < NOF_PROC - 1; i++) // it's a parent processs
+			waitpid(pids[i], &status, 0); // wait for children
+	/* recopying shm 2D array to MATRIX pointer */
+	for(i = 0; i < MAT_OUT->r; i++) 
+		memcpy(&MAT_OUT->matrix[i][0],
+				&shm_mat[i * MAT_OUT->c], 
+				sizeof(int) * MAT_OUT->c);
+	/* write to file and we're done */
+	UTILS_write_matrix(FILEOUT, MAT_OUT);
+	terminate();
+	return 0;
+}
 
-	shmdt(MAT_OUT);
+void terminate(void) {
+	shmdt(shm_mat);
 	shmctl(segment_id, IPC_RMID, NULL);
 	MATRIX_free(MAT_ONE);
 	MATRIX_free(MAT_TWO);
 	MATRIX_free(MAT_OUT);
-	return 0;
 }
