@@ -3,8 +3,7 @@
 #include <string.h>
 #include "../include/matrix.h"
 
-
-
+/* Matrix allocator. New matrix of sizes rows x cols */
 MATRIX *MATRIX_new(int rows, int cols) { 
 	int i;
 	MATRIX *new_mat = (MATRIX *)malloc(sizeof(MATRIX));
@@ -19,6 +18,7 @@ MATRIX *MATRIX_new(int rows, int cols) {
 	return new_mat;
 }
 
+/* Matrix deallocator */
 void MATRIX_free(MATRIX *matrix) {
 	int i;
 	for(i = 0; i < matrix->r; i++)
@@ -27,6 +27,7 @@ void MATRIX_free(MATRIX *matrix) {
 	free((void *) matrix);
 }
 
+/* Sequential matrix multiplier; debugging subroutine */
 MATRIX *MATRIX_sequential_multiply(MATRIX *m1, MATRIX *m2) {
 	int i, j, k, sum;
 	if(!MATRIX_is_multipliable(m1, m2)) {
@@ -46,7 +47,7 @@ MATRIX *MATRIX_sequential_multiply(MATRIX *m1, MATRIX *m2) {
 	}
 	return result;	
 }
-
+/* Matrix line multiplier. Multiplies line 'row' of MATRIX m1 to m2 */
 void MATRIX_line_multiply(MATRIX *mout, MATRIX *m1, MATRIX *m2, int row) {
 	int sum, j, k;
 	for(j = 0; j < m2->c; j++) {
@@ -56,7 +57,7 @@ void MATRIX_line_multiply(MATRIX *mout, MATRIX *m1, MATRIX *m2, int row) {
 			mout->matrix[row][j] = sum;
 	}
 }
-
+/* Checks if m1 and m2 are multipliable matrixes based on their sizes */
 int MATRIX_is_multipliable(MATRIX *m1, MATRIX *m2) {
 	return (m1->c == m2->r);
 }
