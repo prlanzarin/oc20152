@@ -2,15 +2,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
-#include <semaphore.h>
-#include "../include/dining_sem.h"
+#include "../include/dining_cv.h"
 
 int numberPhilosophers;
-sem_t *forks;
-sem_t *lock;
+int philosophersSitting;
+int *forkStatus;
+
 pthread_t *threads; //Philosophers are modelled as threads
 philosopher_t *philosophers;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex2 = PTHREAD_MUTEX_INITIALIZER;
+//Condition variables
+pthread_cond_t seatsAvailable;
+pthread_cond_t *forksAvailable;
 
 int main(int argc, char *argv[])
 {
@@ -25,8 +29,13 @@ int main(int argc, char *argv[])
 	numberPhilosophers = atoi(strtok(argv[1],"-")); //Removes the "-" character included in the call command
 	printf ("n=%d\n",numberPhilosophers);
 
-        //There are N forks for N philosophers -> allocate the forks' semaphore
-        forks = malloc (sizeof(sem_t) * numberPhilosophers);
+	
+	//Allocate one fork for each of the numberPhilosopher philosophers
+        forkStatus = malloc(sizeof(int) * numberPhilosophers);
+	for (k = 0; k < numberPhilosophers; k++)
+	{
+		forkStatus[k] = AVAILABLE;
+	}
 
 	//Allocate the structure to store the philosophers' state
 	philosophers = malloc (sizeof(philosopher_t) * numberPhilosophers);
@@ -34,23 +43,24 @@ int main(int argc, char *argv[])
 	//Allocate corresponding threads
 	threads = malloc(sizeof(pthread_t)*numberPhilosophers);	
 
-	//This semaphore will ensure no more than (numberPhilosophers-1) philosophers are trying to acquire the forks
-        lock = malloc (sizeof(sem_t));
-
-	initializeSemaphores();
+	initializeCVars();
 	startThreads();
 
+
+	
 	for(k = 0; k < numberPhilosophers; k++) {
 		pthread_join(threads[k], NULL);
 	}
 }
 
-void initializeSemaphores()
+void initializeCVars()
 {
 	int k; 
-	for (k = 0; k < numberPhilosophers; k++) //N forks for N philosophers
-		sem_init (&forks[k], 0, 1); //0 means the semaphore shared between threads. 1 because it is a binary semaphore
-	sem_init(lock, 0, (numberPhilosophers-1));
+	forksAvailable = malloc(sizeof(pthread_cond_t) * numberPhilosophers);
+	for (k = 0; k < numberPhilosophers; k++) 
+		pthread_cond_init (&forksAvailable[k], NULL); 
+
+	pthread_cond_init (&seatsAvailable, NULL);
 }
 
 void startThreads ()
@@ -69,22 +79,47 @@ void *dinnerTime(void *params)
 	int i;
 	params_t self = *(params_t *)params;
 	while(1)
-	{
-		for(i = 0; i < 3; i++) {
-			thinking(self.id);
-			sem_wait(lock); //No more than (numberPhilosophers-1) may pass this semaphore
-			hungry(self.id);
-			sem_wait(&forks[self.id]); //Checking both forks
-			sem_wait(&forks[(self.id + 1) % numberPhilosophers]);
-			eating(self.id);
-			pthread_mutex_lock(&mutex);
-			sem_post(&forks[self.id]);
-			sem_post(&forks[(self.id + 1) % numberPhilosophers]);
-			sem_post(lock);
-			philosophers[self.id].state = 'T';
-			printStates();
-			pthread_mutex_unlock(&mutex);
-		}
+	{		
+		thinking(self.id);
+		while(philosophersSitting == (numberPhilosophers-1)) //If the number of philosophers is equal to (n-1),
+			pthread_cond_wait(&seatsAvailable, &mutex);  //the philosopher must wait until one seat is freed
+		philosophersSitting++;
+		thinking (self.id); 
+		hungry(self.id);
+		
+		//The philosopher is already at the table, and is now hungry
+		pthread_mutex_lock (&mutex2);
+
+		if (forkStatus[self.id] == AVAILABLE) //The philosopher has acquired one of the needed forks
+			forkStatus[self.id] = BUSY;
+		else
+			while(forkStatus[self.id] == BUSY) //Retest it everytime
+				pthread_cond_wait (&forksAvailable[self.id], &mutex2);
+		
+		if (forkStatus[(self.id+1)%numberPhilosophers] == AVAILABLE) //The second needed fork is also available
+			forkStatus[(self.id+1)%numberPhilosophers] = BUSY;
+		else
+			while(forkStatus[(self.id+1)%numberPhilosophers] == BUSY) //Retest it everytime
+				pthread_cond_wait (&forksAvailable[self.id], &mutex2);
+
+		pthread_mutex_unlock (&mutex2);
+
+		//At this point, the philosophers has acquired the two forks. It's time to eat
+		eating (self.id);
+
+		//Releasing the forks
+		pthread_mutex_lock (&mutex2);
+		pthread_mutex_lock (&mutex);
+		forkStatus[self.id] = AVAILABLE;
+		pthread_cond_signal (&forksAvailable[self.id]);	
+		forkStatus[(self.id+1)%numberPhilosophers] = AVAILABLE;
+		pthread_cond_signal (&forksAvailable[(self.id+1)%numberPhilosophers]);	
+		philosophersSitting--;
+		pthread_cond_signal (&seatsAvailable);	
+		
+		pthread_mutex_unlock (&mutex);
+		pthread_mutex_unlock (&mutex2);
+
 	}
 }
 
