@@ -61,3 +61,18 @@ void MATRIX_line_multiply(MATRIX *mout, MATRIX *m1, MATRIX *m2, int row) {
 int MATRIX_is_multipliable(MATRIX *m1, MATRIX *m2) {
 	return (m1->c == m2->r);
 }
+/* Checks if m1 and m2 are equal, element-by-element. m1 and m2 of equal sizes*/
+int MATRIX_is_equal(MATRIX *m1, MATRIX  *m2) {
+	int i, j;
+
+	if((m1->r != m2->r) || (m1->c != m2->c))
+		return 0;
+	for(i = 0; i < m1->r; i++) {
+		for(j = 0; j < m2->c; j++) {
+			if(m1->matrix[i][j] != m2->matrix[i][j])
+				return 0;
+		}
+	}
+	
+	return 1;
+}

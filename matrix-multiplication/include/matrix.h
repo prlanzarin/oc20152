@@ -16,4 +16,5 @@ void MATRIX_line_multiply(MATRIX *mout, MATRIX *m1, MATRIX *m2, int row);
 
 int MATRIX_is_multipliable(MATRIX *m1, MATRIX *m2);
 
+int MATRIX_is_equal(MATRIX *m1, MATRIX  *m2); 
 #endif
