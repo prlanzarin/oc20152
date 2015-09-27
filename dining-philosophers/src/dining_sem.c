@@ -3,6 +3,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <unistd.h> //sleep
 #include "../include/dining_sem.h"
 
 int numberPhilosophers;
@@ -43,6 +44,8 @@ int main(int argc, char *argv[])
 	for(k = 0; k < numberPhilosophers; k++) {
 		pthread_join(threads[k], NULL);
 	}
+	
+	return 0;
 }
 
 void initializeSemaphores()

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <unistd.h> // sleep
 #include "../include/dining_cv.h"
 
 int numberPhilosophers;
@@ -46,11 +47,11 @@ int main(int argc, char *argv[])
 	initializeCVars();
 	startThreads();
 
-
-	
 	for(k = 0; k < numberPhilosophers; k++) {
 		pthread_join(threads[k], NULL);
 	}
+
+	return 0;
 }
 
 void initializeCVars()
@@ -76,7 +77,6 @@ void startThreads ()
 
 void *dinnerTime(void *params)
 {
-	int i;
 	params_t self = *(params_t *)params;
 	while(1)
 	{		
