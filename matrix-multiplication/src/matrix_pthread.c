@@ -52,6 +52,8 @@ int main(int argc, char *argv[]) {
 
 	MAT_OUT = MATRIX_new(MAT_ONE->r, MAT_TWO->c);
 
+	NOF_PROC = MIN(NOF_PROC, MAT_ONE->r);
+
 	threads = (pthread_t *) malloc(sizeof(pthread_t) * NOF_PROC);
 	//pthread_t threads[NOF_PROC];
 	pthread_attr_t atributos;

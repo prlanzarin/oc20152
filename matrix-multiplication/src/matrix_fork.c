@@ -13,7 +13,7 @@ int mat_segment_id; // allocated shm segment id
 int *shm_mat; // pointer to 2D array representing a MATRIX->matrix
 size_t SHM_SIZE; // shm block size
 
-MATRIX *MAT_ONE, *MAT_TWO, *MAT_OUT; // global matrixes to operate upon
+MATRIX *MAT_ONE, *MAT_TWO; // global matrixes to operate upon
 int NOF_PROC; // number of processes passed as argument via terminal
 pid_t *pids; // spawned processes identifiers
 
@@ -32,8 +32,6 @@ int main(int argc, char *argv[]) {
 
 	MAT_TWO = MATRIX_new(UTILS_parse_rows(FILEIN_2), UTILS_parse_cols(FILEIN_2));
 	UTILS_parse_matrix(FILEIN_2, MAT_TWO);
-
-	MAT_OUT = MATRIX_new(MAT_ONE->r, MAT_TWO->c);
 
 	if(!(MATRIX_is_multipliable(MAT_ONE, MAT_TWO))) {
 		fprintf(stderr, "ERROR: invalid matrixes sizes.\n");
@@ -62,18 +60,18 @@ int main(int argc, char *argv[]) {
 		if(pid == 0) {
 			shm_attacher();
 			break;	//it's a child process, we record its id
-				// and prevent it from spawning more processes
+			// and prevent it from spawning more processes
 		}
 		pids[proc_counter] = pid;
 	}
 	/* multiplying lines. We don't use MATRIX_line_multiply because it's
 	 * easier to manage shared memory this way */
-	for(row_counter = proc_counter; row_counter < MAT_OUT->r; row_counter += NOF_PROC) {
-		for(i = 0; i < MAT_OUT->r; i++) {
-			for(j = 0; j < MAT_OUT->c; j++)
-				shm_mat[row_counter * MAT_OUT->c + i] +=
-					(MAT_ONE->matrix[row_counter][j] *
-					 MAT_TWO->matrix[j][i]); 
+	for(row_counter = proc_counter; row_counter < MAT_ONE->r; row_counter += NOF_PROC) {
+		for(i = 0; i < MAT_TWO->c; i++) {
+			for(j = 0; j < MAT_TWO->r; j++)
+			shm_mat[row_counter * MAT_TWO->c + i] += 
+				(MAT_ONE->matrix[row_counter][j] * 
+				MAT_TWO->matrix[j][i]); 
 		}
 	}
 	/* main process search; if found, we should wait to wrap things up */
@@ -85,14 +83,8 @@ int main(int argc, char *argv[]) {
 		for(i = 0; i < NOF_PROC - 1; i++)	// it's a parent process
 			waitpid(pids[i], &status, 0);	// wait for children
 
-	/* recopying shm 2D array to MATRIX pointer */
-	for(i = 0; i < MAT_OUT->r; i++) 
-		memcpy(&MAT_OUT->matrix[i][0],
-				&shm_mat[i * MAT_OUT->c + 0], 
-				sizeof(int) * MAT_OUT->c);
-
 	/* write to file and we're done */
-	UTILS_write_matrix(FILEOUT, MAT_OUT);
+	UTILS_write_arr_mat(FILEOUT, shm_mat, MAT_ONE->r, MAT_TWO->c);
 	terminate();
 	return 0;
 }
@@ -106,5 +98,4 @@ void terminate(void) {
 	shmctl(mat_segment_id, IPC_RMID, NULL);
 	MATRIX_free(MAT_ONE);
 	MATRIX_free(MAT_TWO);
-	MATRIX_free(MAT_OUT);
 }

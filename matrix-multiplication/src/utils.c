@@ -33,8 +33,10 @@ int UTILS_get_args(int argc, char **argv) {
 int UTILS_parse_rows(char *filename) {
 	int rows;
 	FILE *file;
-	if((file = fopen(filename,"r")) == NULL)
-		return -1;
+	if((file = fopen(filename,"r")) == NULL) {
+		fprintf(stderr, "ERROR: could not open %s\n", filename);
+		exit(EXIT_FAILURE);
+	}
 
 	if(fscanf(file, "LINHAS = %d\n", &rows)) {
 		fclose(file);
@@ -50,8 +52,10 @@ int UTILS_parse_cols(char *filename) {
 	int cols;
 	FILE *file;
 	char buffer[256];
-	if((file = fopen(filename,"r")) == NULL)
-		return -1;
+	if((file = fopen(filename,"r")) == NULL) {
+		fprintf(stderr, "ERROR: could not open %s\n", filename);
+		exit(EXIT_FAILURE);
+	}
 
 	fgets(buffer, sizeof(buffer), file);
 	
@@ -71,8 +75,10 @@ int UTILS_parse_matrix(char *filename, MATRIX *matrix) {
 	FILE *file;
 	size_t line_size = sizeof(int) * (2 * matrix->c) + 1;
 
-	if((file = fopen(filename,"r")) == NULL)
-		return -1;
+	if((file = fopen(filename,"r")) == NULL){
+		fprintf(stderr, "ERROR: could not open %s\n", filename);
+		exit(EXIT_FAILURE);
+	}
 
 	fgets(line, sizeof(line), file);
 	fgets(line, sizeof(line), file);
@@ -93,8 +99,10 @@ int UTILS_write_matrix(char *filename, MATRIX *mat) {
 	int i, j;
 	FILE *file;
 
-	if((file = fopen(filename, "w+")) == NULL)
-		return -1;
+	if((file = fopen(filename, "w+")) == NULL) {
+		fprintf(stderr, "ERROR: could not open %s\n", filename);
+		exit(EXIT_FAILURE);
+	}
 
 	fprintf(file, "LINHAS = %d\nCOLUNAS = %d\n", mat->r, mat->c);
 	for(i = 0; i < mat->r; i++) {
@@ -104,6 +112,28 @@ int UTILS_write_matrix(char *filename, MATRIX *mat) {
 				fprintf(file, " ");
 		}
 		if(i < mat->r - 1) // last row checking, no line end
+			fprintf(file, "\n");
+	}
+	return 0;
+}
+
+int UTILS_write_arr_mat(char *filename, int *matrix, int r, int c) {
+	int i, j;
+	FILE *file;
+
+	if((file = fopen(filename, "w+")) == NULL) {
+		fprintf(stderr, "ERROR: could not open %s\n", filename);
+		exit(EXIT_FAILURE);
+	}
+
+	fprintf(file, "LINHAS = %d\nCOLUNAS = %d\n", r, c);
+	for(i = 0; i < r; i++) {
+		for(j = 0; j < c; j++) {
+			fprintf(file, "%d", matrix[i*c + j]);
+			if(j < c - 1) // last column checking, no spaces
+				fprintf(file, " ");
+		}
+		if(i < r - 1) // last row checking, no line end
 			fprintf(file, "\n");
 	}
 	return 0;

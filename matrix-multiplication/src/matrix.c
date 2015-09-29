@@ -36,7 +36,6 @@ MATRIX *MATRIX_sequential_multiply(MATRIX *m1, MATRIX *m2) {
 	}
 	
 	MATRIX *result = MATRIX_new(m1->r, m2->c);
-
 	for(i = 0; i < m1->r; i++) {
 		for(j = 0; j < m2->c; j++) {
 			sum = 0;
@@ -52,9 +51,10 @@ void MATRIX_line_multiply(MATRIX *mout, MATRIX *m1, MATRIX *m2, int row) {
 	int sum, j, k;
 	for(j = 0; j < m2->c; j++) {
 		sum = 0;
-		for(k = 0; k < m2->r; k++)
+		for(k = 0; k < m2->r; k++) {
 			sum = sum + (m1->matrix[row][k] * m2->matrix[k][j]); 
-			mout->matrix[row][j] = sum;
+		}
+		mout->matrix[row][j] = sum;
 	}
 }
 /* Checks if m1 and m2 are multipliable matrixes based on their sizes */

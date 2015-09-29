@@ -13,5 +13,6 @@ int UTILS_parse_cols(char *filename);
 int UTILS_parse_matrix(char *filename, MATRIX *matrix); 
 int UTILS_get_args(int argc, char **argv);
 int UTILS_write_matrix(char *filename, MATRIX *mat);
+int UTILS_write_arr_mat(char *filename, int *matrix, int r, int c);
 
 #endif
