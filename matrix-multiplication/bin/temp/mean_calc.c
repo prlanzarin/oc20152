@@ -4,7 +4,7 @@
 
 int main(int argc, char *argv[]) {
 	int i, j, mat, n;
-	float temp, sum;
+	float temp = 0, sum = 0;
 	FILE *op, *ot, *rp, *rt;
 	if((rp = fopen("rprocess.txt","r")) == NULL) {
 		fprintf(stderr, "ERROR: could not open\n");
@@ -24,9 +24,8 @@ int main(int argc, char *argv[]) {
 		exit(EXIT_FAILURE);
 	}
 	j = 0;
-	sum = 0;
 	while(feof(rp) == 0) {
-		for(i = 0; i < 10; i++) {
+		for(i = 0; i < 11; i++) {
 			if(fscanf(rp, "%f MAT %d N %d\n", &temp, &mat, &n) == 3) {
 				sum += temp;
 				j = 1;
@@ -34,13 +33,15 @@ int main(int argc, char *argv[]) {
 			else {j = 0; break;}
 		}
 		if(j)
-			fprintf(op, "%f %d %d\n", (sum/10), mat, n);
+			fprintf(op, "%f %d %d\n", (sum/11), mat, n);
 		sum = 0;
+		temp = 0;
 	}
 	j = 0;	
 	sum = 0;
+	temp = 0;
 	while(!feof(rt)) {
-		for(i = 0; i < 10; i++) {
+		for(i = 0; i < 11; i++) {
 			if(fscanf(rt, "%f MAT %d N %d\n", &temp, &mat, &n) == 3) {
 				sum += temp;
 				j = 1;
@@ -49,8 +50,9 @@ int main(int argc, char *argv[]) {
 
 		}
 		if(j)
-			fprintf(ot, "%f %d %d\n", (sum/10), mat, n);
+			fprintf(ot, "%f %d %d\n", (sum/11), mat, n);
 		sum = 0;
+		temp = 0;
 	}
 	fclose(rp);
 	fclose(rt);
