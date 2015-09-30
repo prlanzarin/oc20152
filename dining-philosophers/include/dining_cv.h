@@ -6,6 +6,7 @@
 
 typedef struct {
 	char state;
+	int prio;
 } philosopher_t;
 
 typedef struct {

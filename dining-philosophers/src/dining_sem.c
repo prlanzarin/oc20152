@@ -67,27 +67,47 @@ void startThreads ()
 	}
 }
 
+int canEat(int id) {
+	
+	int previous, next;	
+	if (id == 0)
+		previous = numberPhilosophers - 1;
+	else
+		previous = id - 1;
+
+	next = (id + 1) % numberPhilosophers;
+
+	if (philosophers[previous].prio < philosophers[id].prio || philosophers[next].prio < philosophers[id].prio) 
+		return 0;
+	else
+		return 1;
+}
+
 void *dinnerTime(void *params)
 {
-	int i;
 	params_t self = *(params_t *)params;
 	while(1)
-	{
-		for(i = 0; i < 3; i++) {
+	{		
 			thinking(self.id);
 			sem_wait(lock); //No more than (numberPhilosophers-1) may pass this semaphore
 			hungry(self.id);
-			sem_wait(&forks[self.id]); //Checking both forks
-			sem_wait(&forks[(self.id + 1) % numberPhilosophers]);
-			eating(self.id);
-			pthread_mutex_lock(&mutex);
-			sem_post(&forks[self.id]);
-			sem_post(&forks[(self.id + 1) % numberPhilosophers]);
-			sem_post(lock);
-			philosophers[self.id].state = 'T';
-			printStates();
-			pthread_mutex_unlock(&mutex);
-		}
+			if (!canEat(self.id))
+			{
+				sem_post(lock);				
+			}
+			else
+			{
+				sem_wait(&forks[self.id]); //Checking both forks
+				sem_wait(&forks[(self.id + 1) % numberPhilosophers]);
+				eating(self.id);
+				pthread_mutex_lock(&mutex);
+				sem_post(&forks[self.id]);
+				sem_post(&forks[(self.id + 1) % numberPhilosophers]);
+				sem_post(lock);
+				philosophers[self.id].state = 'T';
+				printStates();
+				pthread_mutex_unlock(&mutex);	
+			}	
 	}
 }
 
@@ -108,6 +128,7 @@ void eating(int nThread)
 
 	pthread_mutex_lock (&mutex); //Now entering critical section
 	philosophers[nThread].state = 'E';
+	philosophers[nThread].prio++;
 	printStates();
 	pthread_mutex_unlock (&mutex);
 	sleep (eatingTime); //Wait for a random interval between 1 and 10 seconds
