@@ -5,39 +5,24 @@
 #include "../include/utils.h"
 
 MATRIX *MAT_ONE, *MAT_TWO, *MAT_OUT; // global matrixes to operate upon
-int NOF_PROC, currentRow=0; // number of processes passed as argument via terminal
+int NOF_THREADS; // number of processes passed as argument via terminal
 pthread_t * threads;
+int *t_ids;
 
-/* Mutex for the currentRow. */
-pthread_mutex_t mutex_Row = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t count_threshold_cv = PTHREAD_COND_INITIALIZER;
+void *multiplica(void *t_id) {
+	int i, start_row = *(int *)t_id; // thread ID
 
-void *multiplica() {
-	int myRow;
-	while (1) {
-		//Locking....
-		pthread_mutex_lock(&mutex_Row);
-		if (currentRow >= MAT_ONE->r) {
-			pthread_mutex_unlock(&mutex_Row);
-			//Unlocking.No more work to do
-			pthread_exit(0);
-		}
-		//Row to do
-		myRow = currentRow;
-		currentRow++;
-		// Thread No "ID" have work
-
-		pthread_mutex_unlock(&mutex_Row);
-		//unlock - thread No "id" is going to operate on row "myRow"
-		MATRIX_line_multiply(MAT_OUT, MAT_ONE, MAT_TWO, myRow);
-	}
+	for(i = start_row; i < MAT_ONE->r; i += NOF_THREADS) 
+		MATRIX_line_multiply(MAT_OUT, MAT_ONE, MAT_TWO, i);
+	
+	pthread_exit(0);
 }
 
 int main(int argc, char *argv[]) {
 
 	int i,flag;
 
-	NOF_PROC = UTILS_get_args(argc, argv);
+	NOF_THREADS = UTILS_get_args(argc, argv);
 
 	MAT_ONE = MATRIX_new(UTILS_parse_rows(FILEIN_1), UTILS_parse_cols(FILEIN_1));
 	UTILS_parse_matrix(FILEIN_1, MAT_ONE);
@@ -52,26 +37,26 @@ int main(int argc, char *argv[]) {
 
 	MAT_OUT = MATRIX_new(MAT_ONE->r, MAT_TWO->c);
 
-	NOF_PROC = MIN(NOF_PROC, MAT_ONE->r);
+	NOF_THREADS = MIN(NOF_THREADS, MAT_ONE->r);
 
-	threads = (pthread_t *) malloc(sizeof(pthread_t) * NOF_PROC);
-	//pthread_t threads[NOF_PROC];
+	threads = (pthread_t *) malloc(sizeof(pthread_t) * NOF_THREADS);
+	t_ids = (int *) malloc(sizeof(int) * NOF_THREADS);
 	pthread_attr_t atributos;
 	pthread_attr_init(&atributos);
 	pthread_attr_setdetachstate(&atributos, PTHREAD_CREATE_JOINABLE);
 	pthread_attr_setscope(&atributos,PTHREAD_SCOPE_SYSTEM);
 
-
 	//Distributing the work.
-	currentRow = 0;
-	for (i = 0; i < NOF_PROC; i++){
-		flag = pthread_create(&threads[i], NULL, (void *(*) (void *)) multiplica, NULL);
+	for (i = 0; i < NOF_THREADS; i++){
+		t_ids[i] = i; // thread ID like in fork version to fetch start row
+		flag = pthread_create(&threads[i], NULL, 
+				(void *(*) (void *)) multiplica, (void *)&t_ids[i]);
 		if (flag)
 			exit(-1);
 	}
 
 	//join all threads
-	for (i = 0; i < NOF_PROC; i++)
+	for (i = 0; i < NOF_THREADS; i++)
 		pthread_join(threads[i], NULL);
 
 	//write the matrix
